@@ -1,0 +1,75 @@
+experiment_name: "GrowingRF"
+task: "growing_rf"
+device: "cuda:0"
+precision: "float16" # "float16" or "float32"
+
+nca:
+  type: "GrowingVNCA"
+  graft_initialization: null
+  output_type: "s" # This determines what will be passed to siren
+  grid_size: [ 80, 80, 80 ] # Size of the NCA grid. This is the size of the NCA state.
+
+  nca_kwargs:
+    channels: 32 # Number of nca channels
+    fc_dim: 256 # Number of neurons in the hidden layer
+    noise_level: 0.0 # Noise level for the NCA
+    update_prob: 0.5 # Probability of updating the state
+    seed_radius: 3 # Radius of the initial seed
+    padding: "constant"
+
+siren:
+  hidden_features: 64 # Number of neurons in the hidden layer of the SIREN decoder
+  hidden_layers: 2 # Number of hidden layers in the SIREN decoder
+  outermost_linear: True # Whether to use a linear layer at the output of the SIREN decoder
+  fx: "linear" # The preactivation function before the sin. ["linear", "finer", "sinh"]
+  activation: "sin"
+  num_frequencies: 1 # Number of frequencies in the SIREN decoder
+  first_omega_0: 10.0
+  hidden_omega_0: 10.0
+
+renderer:
+  num_samples: 256 # Number of samples per ray
+  num_fine_samples: 256
+  perturb: True # Whether to perturb that sampled points along the ray
+  apply_living_mask: True # Whether to apply the living mask during volumetric rendering
+  voxel_bounds: [ -1.25, 1.25 ]
+  background_color: 0.0 # Background color for the volumetric rendering
+  density_factor: 1.0
+  color_factor: 1.0
+  non_linearity: "softplus"
+  sh_degree: 0
+  sampler_kwargs:
+    mode: "stride"
+    stride: 8
+    patch_size: 64
+
+train:
+  epochs: 60000 # Number of epochs
+  batch_size: 1 # Batch size
+  virtual_batch_size: 4 # accumulate gradients over this many batches before applying them.
+  num_views: 4
+  lr: 0.0001 # Learning rate
+  lr_decay_steps: [ 15000, 30000, 45000 ] # Learning rate decay steps
+  lr_decay_gamma: 0.3 # Learning rate decay factor
+  num_repetitions: 1 # Number of times to repeat the training loop
+
+  #### NCA related configs ####
+  pool_size: 512 # Number of samples in the pool. Pool is used to improve long-term stability of MeshNCA
+  inject_seed_interval: 32 # Number of steps after which a seed state is injected into the pool
+  step_range: [ 8, 64 ] # Number of update steps during training is sampled randomly from this range
+
+  summary_interval: 100 # Interval for logging the training summary
+
+loss:
+  overflow_loss_weight: 100.0 # Weight of the overflow loss
+  rf_loss_weight: 1.0 # Weight of the image loss
+
+  rf_loss_kwargs:
+    scene_path: "data/radiance_fields/lego"
+    image_size: [ 512, 512 ] # Size of the target image
+    l2_weight: 1.0
+    l1_weight: 1.0
+    lpips_weight: 0.0
+
+logger:
+  backend: local

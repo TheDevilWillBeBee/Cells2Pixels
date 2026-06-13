@@ -1,8 +1,17 @@
+--extra-index-url https://download.pytorch.org/whl/cu129
+
+-f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-2.8.0_cu129.html
+
 gdown
-torch
-torchvision
+torch==2.8.0
+torchvision==0.23.0
+kaolin==0.18.0
 matplotlib
 embreex
 pyproj
 moviepy==1.0.3
 torch_geometric
+pyyaml
+lpips
+trimesh
+wandb

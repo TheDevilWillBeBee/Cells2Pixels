@@ -1,0 +1,60 @@
+experiment_name: "GrowingNCA"
+task: "growing_2d"
+device: "cuda:0"
+
+nca:
+  type: "GrowingNCA" # Type of the NCA. Options: "NCA", "PENCA", "NoiseNCA"
+  graft_initialization: null
+  output_type: "s" # "s" or "z". Whether to pass the state or perception to SIREN
+
+  nca_kwargs:
+    channels: 32 # Number of nca channels
+    fc_dim: 256 # Number of neurons in the hidden layer
+
+siren:
+  hidden_features: 64 # Number of neurons in the hidden layer of the SIREN decoder
+  hidden_layers: 2 # Number of hidden layers in the SIREN decoder
+  outermost_linear: True # Whether to use a linear layer at the output of the SIREN decoder
+  fx: "linear" # The preactivation function before the sin. ["linear", "finer", "sinh"]
+  activation: "sin"
+  num_frequencies: 1 # Number of frequencies in the SIREN decoder
+  first_omega_0: 10.0
+  hidden_omega_0: 10.0
+  disable: False
+  disable_coords: False
+
+train:
+  epochs: 4000 # Number of epochs
+  batch_size: 8 # Batch size
+  lr: 0.001 # Learning rate
+  lr_decay_steps: [ 1000, 2000, 3000 ] # Learning rate decay steps
+  lr_decay_gamma: 0.3 # Learning rate decay factor
+  num_repetitions: 5 # Number of times to repeat the training loop
+
+  #### NCA related configs ####
+  pool_size: 1024 # Number of samples in the pool. Pool is used to improve long-term stability of MeshNCA
+  inject_seed_interval: 32 # Number of steps after which a seed state is injected into the pool
+  step_range: [ 32, 96 ] # Number of update steps during training is sampled randomly from this range
+
+  summary_interval: 250 # Interval for logging the training summary
+
+renderer:
+  scale_factor: 8 # Scale factor for the renderer. The final resolution will be (nca_grid_size * scale_factor)
+  padding: "circular" # This should ideally be the same as the padding used in the NCA.
+  fs_shader: "vanilla" # The fragment shader to use. Either "vanilla" or "simple" or "pbr"
+
+loss:
+  overflow_loss_weight: 100.0 # Weight of the overflow loss
+  image_loss_weight: 1.0 # Weight of the image loss
+
+  image_loss_kwargs:
+    target_path: "data/morphology_png/chameleon.png"
+    image_size: [ 512, 512 ] # Size of the target image
+    padding: [ 128, 128 ]
+    l2_weight: 1.0
+    l1_weight: 1.0
+    lpips_weight: 1.0
+    premultiply_alpha: True # Whether to premultiply alpha channel in the target image
+
+logger:
+  backend: local

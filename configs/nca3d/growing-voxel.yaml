@@ -1,0 +1,59 @@
+experiment_name: "GrowingVoxel"
+task: "growing_voxel"
+device: "cuda:0"
+precision: "float16" # "float16" or "float32"
+
+nca:
+  type: "GrowingVNCA"
+  graft_initialization: null
+  output_type: "s" # This determines what will be passed to siren
+
+  nca_kwargs:
+    channels: 16 # Number of nca channels
+    fc_dim: 128 # Number of neurons in the hidden layer
+    noise_level: 0.0 # Noise level for the NCA
+    update_prob: 0.5 # Probability of updating the state
+    seed_radius: 1 # Radius of the initial seed
+
+scale_factor: 2 # NCA grid size = voxel_loss_kwargs[res] / scale_factor
+
+siren:
+  hidden_features: 32 # Number of neurons in the hidden layer of the SIREN decoder
+  hidden_layers: 2 # Number of hidden layers in the SIREN decoder
+  outermost_linear: True # Whether to use a linear layer at the output of the SIREN decoder
+  fx: "linear" # The preactivation function before the sin. ["linear", "finer", "sinh"]
+  activation: "sin"
+  num_frequencies: 1 # Number of frequencies in the SIREN decoder
+  first_omega_0: 10.0
+  hidden_omega_0: 10.0
+
+train:
+  epochs: 4000 # Number of epochs
+  batch_size: 2 # Batch size
+  virtual_batch_size: 4 # accumulate gradients over this many batches before applying them.
+  lr: 0.001 # Learning rate
+  lr_decay_steps: [ 1000, 2000, 3000 ] # Learning rate decay steps
+  lr_decay_gamma: 0.3 # Learning rate decay factor
+  num_repetitions: 4 # Number of times to repeat the training loop
+
+  #### NCA related configs ####
+  pool_size: 512 # Number of samples in the pool. Pool is used to improve long-term stability of MeshNCA
+  inject_seed_interval: 2 # Number of steps after which a seed state is injected into the pool
+  step_range: [ 32, 64 ] # Number of update steps during training is sampled randomly from this range
+
+  summary_interval: 50 # Interval for logging the training summary
+
+loss:
+  overflow_loss_weight: 100.0 # Weight of the overflow loss
+  voxel_loss_weight: 1.0 # Weight of the image loss
+
+  voxel_loss_kwargs:
+    mesh_path: "data/meshes/bunny/bunny.obj"
+    solid_texture_vol_path: "data/solid_textures/fauxfur.vol"
+    res: 128
+    padding: 16
+    l2_weight: 1.0
+    l1_weight: 1.0
+
+logger:
+  backend: local

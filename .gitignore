@@ -7,11 +7,14 @@ __pychache__
 *.jpg
 *.zip
 resize_images.py
+train_legacy/
 
 output_gifs/
 *.gif
 tmp.py
 install_requirements.sh
+scripts/preview_target_names.py
+experiments/
 
 # Outputs and Data
 output/

@@ -1,0 +1,101 @@
+experiment_name: "3DTexture"
+task: "texture_3d"
+device: "cuda:0"
+precision: "float16" # "float16" or "float32"
+
+nca:
+  type: "VNCA"
+  graft_initialization: null
+  output_type: "s" # This determines what will be passed to siren
+  grid_size: [ 64, 64, 64 ] # Size of the NCA grid. This is the size of the NCA state.
+
+  nca_kwargs:
+    channels: 16 # Number of nca channels
+    fc_dim: 128 # Number of neurons in the hidden layer
+    noise_level: 0.0 # Noise level for the NCA
+    update_prob: 0.5 # Probability of updating the state
+    padding: "circular"
+
+siren:
+  hidden_features: 32 # Number of neurons in the hidden layer of the SIREN decoder
+  hidden_layers: 2 # Number of hidden layers in the SIREN decoder
+  outermost_linear: True # Whether to use a linear layer at the output of the SIREN decoder
+  fx: "linear" # The preactivation function before the sin. ["linear", "finer", "sinh"]
+  activation: "sin"
+  num_frequencies: 0 # Number of frequencies in the SIREN decoder
+  first_omega_0: 10.0
+  hidden_omega_0: 10.0
+
+renderer:
+  num_samples: 256 # Number of samples per ray
+  num_fine_samples: 0
+  perturb: True # Whether to perturb that sampled points along the ray
+  apply_living_mask: False # Whether to apply the living mask during volumetric rendering
+  voxel_bounds: [ -1, 1.0 ]
+  background_color: 1.0 # Background color for the volumetric rendering
+  density_factor: 1.0
+  color_factor: 1.0
+  #   non_linearity: "relu"
+  non_linearity: "softplus"
+  sh_degree: 0
+  sampler_kwargs:
+    mode: "stride"
+    stride: 1
+    patch_size: 256
+
+train:
+  camera:
+    height: 512 # Height of the rendered image (Number of pixels in the camera)
+    width: 512 # Width of the rendered image (Number of pixels in the camera)
+    num_views: 1 # Number of random views used fo training. In the paper, we used 6 views
+    distance: 2.3 # Distance of the camera from the origin
+    bounds: [ 0.1, 10.0 ]
+    max_elevation: 180.0 # Maximum elevation angle of the camera
+    max_azimuth: 360.0 # Maximum azimuth angle of the camera
+    fov: 80.0
+    k: 100.0 # k=1.0 means the camera is perspective. As k increases the camera becomes more orthographic
+  epochs: 4000 # Number of epochs
+  batch_size: 1 # Batch size
+  virtual_batch_size: 4 # accumulate gradients over this many batches before applying them.
+  lr: 0.001 # Learning rate
+  lr_decay_steps: [ 1000, 2000, 3000 ] # Learning rate decay steps
+  lr_decay_gamma: 0.3 # Learning rate decay factor
+  num_repetitions: 1 # Number of times to repeat the training loop
+
+  #### NCA related configs ####
+  pool_size: 512 # Number of samples in the pool. Pool is used to improve long-term stability of MeshNCA
+  inject_seed_interval: 32 # Number of steps after which a seed state is injected into the pool
+  step_range: [ 16, 48 ] # Number of update steps during training is sampled randomly from this range
+
+  summary_interval: 100 # Interval for logging the training summary
+
+num_channels:
+  {
+    # Number of channels in the model to assign to each target image
+    "rgb": 3
+  }
+loss:
+  overflow_loss_weight: 100.0 # Weight of the overflow loss
+  appearance_loss_weight: 2.0 # Weight of the style loss
+
+  #### Appearance loss used for image-guided training. Mostly based on VGG features ####
+  appearance_loss_kwargs:
+    target_image_size: [ 512, 512 ] # Resolution for loading the target images
+    patch_size: [ 128, 128 ] # Crops from the generated images will be resized to this size before passing to VGG
+    num_scales: 3 # Number of scales to be used for the style loss
+    relative_scale: 1 # Relative scale of the target image to the generated image. 1.0 = same size, 2.0 = twice the size
+    max_image_size: [ 2048, 2048 ] # Images larger than this size will be center cropped (Used to avoid OOM errors when relative scale is large)
+    # The single channel images will be expanded to 3 channels for evaluating the VGG-based style loss
+    # Sci-fi_Wall_010
+    target_images_path:
+      {
+        # Paths to the target images for the appearance loss. The keys should correspond to the keys in num_channels
+        "rgb": "data/textures_3d/bubbly_0101.jpg"
+      }
+    # Number of channels in the target images
+    include_image_as_feature: False
+    num_pseudo_targets: 0
+    vgg_layers: [ 1, 6, 11, 18, 25 ] # VGG layers to be used for the style loss
+
+logger:
+  backend: local
