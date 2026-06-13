@@ -151,7 +151,6 @@ if __name__ == "__main__":
     from utils.render import Renderer3D
 
     device = auto_device()
-    device = "cpu"
     with torch.no_grad():
         icosphere = Mesh.load_icosphere(2 ** 4, device=device)
         projection = SphereProjection(icosphere, height=256, width=256, max_elevation=90.0, max_azimuth=180.0,
@@ -171,19 +170,27 @@ if __name__ == "__main__":
         from utils.camera import PerspectiveCamera
 
         # Render the mesh from 6 random viewpoints
-        # camera = PerspectiveCamera.generate_random_view_cameras(1, distance=2.1, k=1, max_elevation=0.0, height=512,
-        #                                                         width=512,
-        #                                                         max_azimuth=0.0, device=device)
-        camera = None
+        camera = PerspectiveCamera.generate_random_view_cameras(1, distance=2.1, k=1, max_elevation=0.0, height=512,
+                                                                width=512,
+                                                                max_azimuth=0.0, device=device)
+        # camera = None
         # Use vs_shader = "ray" for sphere projection rendering
         # Use vs_shader = "raster" for standard rasterization rendering
-        renderer = Renderer3D(background_color=1.0, vs_shader="ray")
+        renderer = Renderer3D(background_color=1.0, vs_shader="raster")
         mesh = icosphere
 
         siren = Siren(feature_dim, 3, 32, 2, 3, outermost_linear=False).to(device)
 
         # siren = None
-        rendered_image = renderer.render(mesh, vertex_features, camera, projection, siren)
+        rendered_image = renderer.render(mesh, vertex_features, camera, None, siren)
+        # rendered_image: [batch_size, num_views, height, width, num_features]
+
+        image = Renderer3D.to_pil(torch.tensor(rendered_image)).show()
+
+        renderer = Renderer3D(background_color=1.0, vs_shader="ray")
+
+
+        rendered_image = renderer.render(mesh, vertex_features, None, projection, siren)
         # rendered_image: [batch_size, num_views, height, width, num_features]
 
         image = Renderer3D.to_pil(torch.tensor(rendered_image)).show()

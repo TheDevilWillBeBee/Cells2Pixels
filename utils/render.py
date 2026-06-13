@@ -822,74 +822,8 @@ class Renderer3D(Renderer):
                f"\n\tpoint_light={self.point_light}, background_color={self.background_color})"
 
 
+
 if __name__ == '__main__':
-    renderer = Renderer3D(background_color=1.0, ambient_light=0.5, directional_light=0.5, point_light=0.5,
-                          vs_shader="raster")
-
-    import os
-    from utils.misc import load_texture_image, process_output_channels, auto_device
-    from tqdm import tqdm
-
-
-    device = auto_device()
-
-    with torch.no_grad():
-        num_channels = {  # Number of channels in the model to assign to each target image
-            "albedo": 3,
-            # "height": 1,
-            "normal": 3,
-            # "roughness": 1,
-            # "ambient_occlusion": 1,
-            "hra": 3,  # Height, Roughness, Ambient Occlusion
-        }
-        total_channels, target_channels = process_output_channels(num_channels)
-
-        H, W = 1024, 1024
-        shader_config = {
-            "background_color": 1.0,
-            "ambient_light": 0.5,
-            "directional_light": 0.0,
-            "point_light": 0.7,
-        }
-
-        for target in tqdm(os.listdir("data/pbr_textures/")):
-            # if target != "Sci-fi_Wall_010":
-            # if target != "Stylized_blocks_001":
-            #
-            #     continue
-            target_images_path = {
-                "albedo": f"data/pbr_textures/{target}/albedo.jpg",
-                # "height": f"data/pbr_textures/{target}/height.jpg",
-                "normal": f"data/pbr_textures/{target}/normal.jpg",
-                "hra": f"data/pbr_textures/{target}/hra.jpg",
-                # "roughness": f"data/pbr_textures/{target}/roughness.jpg",
-                # "ambient_occlusion": f"data/pbr_textures/{target}/ambient_occlusion.jpg",
-            }
-
-            # Load target images
-            albedo = load_texture_image(target_images_path["albedo"], (H, W))[0]
-            # height = load_texture_image(target_images_path["height"], (H, W))[0].mean(dim=1, keepdim=True)
-            normal = load_texture_image(target_images_path["normal"], (H, W))[0]
-            # roughness = load_texture_image(target_images_path["roughness"], (H, W))[0].mean(dim=1, keepdim=True)
-            # ambient_occlusion = load_texture_image(target_images_path["ambient_occlusion"], (H, W))[0].mean(dim=1,
-            #                                                                                                 keepdim=True)
-            hra = load_texture_image(target_images_path["hra"], (H, W))[0]
-            texture_maps = torch.zeros((1, 9, H, W), device=device)
-            texture_maps[:, :3] = albedo
-            texture_maps[:, 3:6] = hra
-            texture_maps[:, 6:9] = normal
-
-            # texture_maps = torch.cat([albedo, height, normal, roughness, ambient_occlusion], dim=1).to(device)
-            texture_maps = texture_maps.permute(0, 2, 3, 1)  # [N, H, W, C]
-
-            color = FragmentShader.pbr_2d_fs_shader(shader_config, texture_maps, target_channels)
-            image = Renderer3D.to_pil(color[:, None])
-
-            # image.show()
-            # exit()
-            image.save(f"data/pbr_textures/{target}/rendered.jpg")
-#
-if __name__ == '__main__2':
     from utils.mesh import Mesh
     from utils.camera import PerspectiveCamera
     from utils.misc import auto_device
@@ -912,7 +846,7 @@ if __name__ == '__main__2':
         # Render the mesh from 6 random viewpoints
         camera = PerspectiveCamera.generate_random_view_cameras(2, distance=2.0, k=1, device=device,
                                                                 max_azimuth=360.0, max_elevation=180.0,
-                                                                height=1024, width=1024)
+                                                                height=256, width=256)
         # projection = SphereProjection(mesh, height=1024, width=1024, max_elevation=180.0, max_azimuth=360.0,
         #                               max_range=0.55, num_views=2, max_views=3,
         #                               save_path="data/projections/",
@@ -944,10 +878,10 @@ if __name__ == '__main__2':
         image = Renderer3D.to_pil(torch.tensor(rendered_image)).show()
         # image = Renderer.to_pil(torch.tensor(rendered_image), batch_stack='horizontal', view_stack='vertical').show()
 
-        # with VideoWriter('tmp.mp4', fps=30.0) as video:
-        #     for i in tqdm(range(120)):
-        #         image = renderer.render(mesh, camera, vertex_features, True).cpu().numpy()
-        #         camera.rotateZ(3.0)
-        #         image = np.hstack(image)
-        #         video.add(image)
-        #
+        with VideoWriter('tmp.mp4', fps=30.0) as video:
+            for i in tqdm(range(16)):
+                rendered_image = renderer.render(mesh, vertex_features, camera, projection, siren, target_channels, fs_shader="simple").cpu().numpy()
+                image = Renderer3D.to_pil(torch.tensor(rendered_image))
+                camera.rotateY(1.0)
+                video.add(image)
+        

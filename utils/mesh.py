@@ -7,7 +7,7 @@ from utils.icosphere import icosphere
 
 def _parse_obj_vertex_index(face_token, num_vertices, line_number):
     """Parse the vertex index from an OBJ face token."""
-    vertex_index = face_token.split('/')[0]
+    vertex_index = face_token.split("/")[0]
     if vertex_index == "":
         raise ValueError(f"Missing vertex index in OBJ face on line {line_number}.")
 
@@ -33,7 +33,9 @@ def import_mesh(obj_path):
             parts = line.split()
             if parts[0] == "v":
                 if len(parts) < 4:
-                    raise ValueError(f"OBJ vertex on line {line_number} has fewer than 3 coordinates.")
+                    raise ValueError(
+                        f"OBJ vertex on line {line_number} has fewer than 3 coordinates."
+                    )
                 vertices.append([float(parts[1]), float(parts[2]), float(parts[3])])
             elif parts[0] == "f":
                 face = [
@@ -55,7 +57,9 @@ def import_mesh(obj_path):
     faces = torch.tensor(faces, dtype=torch.int64)
 
     if torch.any(faces < 0) or torch.any(faces >= vertices.shape[0]):
-        raise ValueError(f"OBJ face references a vertex outside the available range: {obj_path}")
+        raise ValueError(
+            f"OBJ face references a vertex outside the available range: {obj_path}"
+        )
 
     return vertices, faces
 
@@ -90,12 +94,14 @@ def subdivide_trianglemesh(vertices, faces, subdivision_iter):
             m01 = midpoint_index(v0, v1)
             m12 = midpoint_index(v1, v2)
             m20 = midpoint_index(v2, v0)
-            new_faces.extend([
-                [v0, m01, m20],
-                [v1, m12, m01],
-                [v2, m20, m12],
-                [m01, m12, m20],
-            ])
+            new_faces.extend(
+                [
+                    [v0, m01, m20],
+                    [v1, m12, m01],
+                    [v2, m20, m12],
+                    [m01, m12, m20],
+                ]
+            )
 
         faces_list = new_faces
 
@@ -137,7 +143,9 @@ class Mesh:
 
         with torch.no_grad():
             # Extract edges from faces of the mesh
-            edges = torch.column_stack([self.faces, torch.roll(self.faces, shifts=-1, dims=1)])
+            edges = torch.column_stack(
+                [self.faces, torch.roll(self.faces, shifts=-1, dims=1)]
+            )
             edges = edges.reshape(-1, 2)
             edges, _ = torch.sort(edges, dim=1)
             edges = torch.unique(edges, dim=0)
@@ -158,7 +166,11 @@ class Mesh:
         # Compute the Laplacian matrix of the mesh
         self._compute_laplacian()
 
-        self.Nv, self.Nf, self.Ne = self.vertices.shape[0], self.faces.shape[0], self.edges.shape[0]
+        self.Nv, self.Nf, self.Ne = (
+            self.vertices.shape[0],
+            self.faces.shape[0],
+            self.edges.shape[0],
+        )
 
     @staticmethod
     def load_from_obj(obj_path, subdivision_iter=0, **kwargs):
@@ -172,7 +184,7 @@ class Mesh:
         return Mesh(vertices, faces, mesh_name=mesh_name, **kwargs)
 
     @staticmethod
-    def load_icosphere(subdivision_freq=2 ** 6, **kwargs):
+    def load_icosphere(subdivision_freq=2**6, **kwargs):
         """
         Load an icosphere mesh with a given number of subdivisions.
 
@@ -209,15 +221,9 @@ class Mesh:
 
         # NOTE: this is already applying the area weighting as the magnitude
         # of the cross product is 2 x area of the triangle.
-        vertex_normals = vertex_normals.index_add(
-            0, self.faces[:, 0], faces_normals
-        )
-        vertex_normals = vertex_normals.index_add(
-            0, self.faces[:, 1], faces_normals
-        )
-        vertex_normals = vertex_normals.index_add(
-            0, self.faces[:, 2], faces_normals
-        )
+        vertex_normals = vertex_normals.index_add(0, self.faces[:, 0], faces_normals)
+        vertex_normals = vertex_normals.index_add(0, self.faces[:, 1], faces_normals)
+        vertex_normals = vertex_normals.index_add(0, self.faces[:, 2], faces_normals)
 
         self.vertex_normals = torch.nn.functional.normalize(
             vertex_normals, eps=1e-6, dim=1
@@ -234,8 +240,13 @@ class Mesh:
         ones = torch.ones(edge_list.shape[0], dtype=torch.float32).to(device)
 
         # Create a sparse adjacency matrix using the edge list and ones
-        adj_matrix_sparse = torch.sparse_coo_tensor(edge_list.t(), ones, size=(num_vertices, num_vertices),
-                                                    dtype=torch.float32, device=device)
+        adj_matrix_sparse = torch.sparse_coo_tensor(
+            edge_list.t(),
+            ones,
+            size=(num_vertices, num_vertices),
+            dtype=torch.float32,
+            device=device,
+        )
 
         # Make the adjacency matrix symmetric for undirected graphs
         adj_matrix_sparse = adj_matrix_sparse + adj_matrix_sparse.t()
@@ -247,8 +258,13 @@ class Mesh:
         self.average_valence = torch.mean(degree_vals).item()
 
         degree_matrix_sparse = torch.sparse_coo_tensor(
-            torch.stack([torch.arange(num_vertices), torch.arange(num_vertices)]).to(device), degree_vals,
-            size=(num_vertices, num_vertices), dtype=torch.float32, device=device
+            torch.stack([torch.arange(num_vertices), torch.arange(num_vertices)]).to(
+                device
+            ),
+            degree_vals,
+            size=(num_vertices, num_vertices),
+            dtype=torch.float32,
+            device=device,
         )
         self.laplacian_matrix = degree_matrix_sparse - adj_matrix_sparse
 
@@ -259,7 +275,12 @@ class Mesh:
         """
         return vertex_features[:, self.faces]
 
-    def interpolate(self, vertex_features: torch.Tensor, barycentric_coords: torch.Tensor, faces: torch.Tensor) -> torch.Tensor:
+    def interpolate(
+        self,
+        vertex_features: torch.Tensor,
+        barycentric_coords: torch.Tensor,
+        faces: torch.Tensor,
+    ) -> torch.Tensor:
         """
         :param vertex_features: A torch tensor with shape [batch_size, num_vertices, num_features]
         :param barycentric_coords: A torch tensor with shape [..., 3] representing the barycentric coordinates for each triangle
@@ -269,46 +290,55 @@ class Mesh:
         :return: A torch tensor with shape [..., num_features]
         Interpolates the vertex features using the barycentric coordinates. This process is similar to rasterization.
         """
-        V1 = faces[..., 0] # first vertex of the face [...]
-        V2 = faces[..., 1] # second vertex of the face [...]
-        V3 = faces[..., 2] # third vertex of the face [...]
-        w = barycentric_coords[..., 0] # weight for the first vertex [...]
-        u = barycentric_coords[..., 1] # weight for the second vertex [...]
-        v = barycentric_coords[..., 2] # weight for the third vertex [...]
+        V1 = faces[..., 0]  # first vertex of the face [...]
+        V2 = faces[..., 1]  # second vertex of the face [...]
+        V3 = faces[..., 2]  # third vertex of the face [...]
+        w = barycentric_coords[..., 0]  # weight for the first vertex [...]
+        u = barycentric_coords[..., 1]  # weight for the second vertex [...]
+        v = barycentric_coords[..., 2]  # weight for the third vertex [...]
 
-        feature1 = vertex_features[:, V1] # features of the first vertex [batch_size, ..., num_features]
-        feature2 = vertex_features[:, V2] # features of the second vertex [batch_size, ..., num_features]
-        feature3 = vertex_features[:, V3] # features of the third vertex [batch_size, ..., num_features]
+        feature1 = vertex_features[
+            :, V1
+        ]  # features of the first vertex [batch_size, ..., num_features]
+        feature2 = vertex_features[
+            :, V2
+        ]  # features of the second vertex [batch_size, ..., num_features]
+        feature3 = vertex_features[
+            :, V3
+        ]  # features of the third vertex [batch_size, ..., num_features]
         interpolated_feature = (
-            feature1 * w[None, ..., None] +
-            feature2 * u[None, ..., None] +
-            feature3 * v[None, ..., None]
+            feature1 * w[None, ..., None]
+            + feature2 * u[None, ..., None]
+            + feature3 * v[None, ..., None]
         )
 
         return interpolated_feature
 
-
-
     def __repr__(self):
-        return f"Mesh(" \
-               f"\n\tName = {self.mesh_name}" \
-               f"\n\tVertices = {self.vertices.shape[0]}," \
-               f"\n\tFaces = {self.faces.shape[0]}," \
-               f"\n\tEdges = {self.edges.shape[0]}," \
-               f"\n\tValence (min, max, average) = {(self.min_valence, self.max_valence, self.average_valence)}," \
-               f"\n\tDevice = {self.vertices.device}," \
-               f"\n)"
+        return (
+            f"Mesh("
+            f"\n\tName = {self.mesh_name}"
+            f"\n\tVertices = {self.vertices.shape[0]},"
+            f"\n\tFaces = {self.faces.shape[0]},"
+            f"\n\tEdges = {self.edges.shape[0]},"
+            f"\n\tValence (min, max, average) = {(self.min_valence, self.max_valence, self.average_valence)},"
+            f"\n\tDevice = {self.vertices.device},"
+            f"\n)"
+        )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from utils.misc import auto_device
+
     device = auto_device()
     with torch.no_grad():
-        mesh1 = Mesh.load_from_obj('data/meshes/cat/cat.obj', subdivision_iter=1, device=device)
-        mesh2 = Mesh.load_icosphere(2 ** 6, device=device)
-        mesh3 = Mesh.load_from_obj('data/meshes/cat/cat.obj', subdivision_iter=0, device=device)
-
-
+        mesh1 = Mesh.load_from_obj(
+            "data/meshes/cat/cat.obj", subdivision_iter=1, device=device
+        )
+        mesh2 = Mesh.load_icosphere(2**6, device=device)
+        mesh3 = Mesh.load_from_obj(
+            "data/meshes/cat/cat.obj", subdivision_iter=0, device=device
+        )
 
         print(mesh1)
 
@@ -320,17 +350,34 @@ if __name__ == '__main__':
         F = mesh2.faces
         T = V[F]
 
+        from utils.camera import PerspectiveCamera
+        from utils.render import Renderer3D
+        from models.siren import Siren
 
-        # import trimesh
-        #
-        # mesh = trimesh.Trimesh(vertices=V.cpu().numpy(), faces=F.cpu().numpy())
-        #
-        # Intersector = trimesh.ray.ray_pyembree.RayMeshIntersector(mesh, False)
-        #
-        # ray_origins = np.array([[0, 0, 0]], dtype=np.float32)
-        # ray_directions = np.array([[0, 0, 1]], dtype=np.float32)
-        #
-        # res = Intersector.intersects_location(ray_origins=ray_origins, ray_directions=ray_directions, multiple_hits=False)
-        # print(res)
-        # print(T[res[2]])
+        # Render the mesh from 6 random viewpoints
+        camera = PerspectiveCamera.generate_random_view_cameras(
+            4,
+            distance=2.1,
+            k=1,
+            max_azimuth=180.0,
+            max_elevation=90.0,
+            height=512,
+            width=512,
+            device=device,
+        )
 
+        # Use vs_shader = "ray" for sphere projection rendering
+        # Use vs_shader = "raster" for standard rasterization rendering
+        renderer = Renderer3D(background_color=1.0, vs_shader="raster")
+        mesh = mesh1
+        vertex_features = torch.rand((1, mesh.vertices.shape[0], 3), device=device)
+        vertex_features[:, :, :3] = mesh.vertex_normals  # use vertex normals as the first 3 features
+        feature_dim = vertex_features.shape[-1]
+
+        siren = Siren(feature_dim, 3, 32, 2, 3, outermost_linear=False).to(device)
+
+        siren = None
+        rendered_image = renderer.render(mesh, vertex_features, camera, None, siren)
+        # rendered_image: [batch_size, num_views, height, width, num_features]
+
+        image = Renderer3D.to_pil(torch.tensor(rendered_image)).show()

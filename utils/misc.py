@@ -3,8 +3,7 @@ from PIL import Image
 import numpy as np
 from torchvision import transforms
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib
+
 import PIL
 import io
 
@@ -93,6 +92,8 @@ def load_texture_image(img_path, img_size=(256, 256)):
 
 
 def plot_vec_field(vector_field, name="target", vmin=None, vmax=None):
+    import matplotlib
+    import matplotlib.pyplot as plt
     """
     Parameters
     ----------
