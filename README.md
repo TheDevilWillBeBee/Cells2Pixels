@@ -3,7 +3,6 @@
 [![Project Page](https://img.shields.io/badge/Project-Page-blue)](https://cells2pixels.github.io/#growing)
 [![arXiv](https://img.shields.io/badge/arXiv-2506.22899-b31b1b)](https://arxiv.org/abs/2506.22899v3)
 ![SIGGRAPH 2026](https://img.shields.io/badge/SIGGRAPH-2026-green)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TheDevilWillBeBee/Cells2Pixels/blob/main/notebooks/growing.ipynb)
 [![Open Simple Texture In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TheDevilWillBeBee/Cells2Pixels/blob/main/notebooks/simple_texture.ipynb)
 
 ![Teaser](data/repo/teaser.jpg)
@@ -86,10 +85,8 @@ python train.py --config configs/nca2d/growing.yaml --test
 
 Outputs are written under the configured experiment directory, and test images or videos are written to `outputs` by default.
 
-You can also run these experiments end-to-end in your browser via Colab notebooks:
-
-- Growing a 2D morphology: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TheDevilWillBeBee/Cells2Pixels/blob/main/notebooks/growing.ipynb)
-- Simple 2D texture synthesis on `bubbly_0101.jpg`: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TheDevilWillBeBee/Cells2Pixels/blob/main/notebooks/simple_texture.ipynb)
+You can also run simple 2D texture synthesis on `bubbly_0101.jpg` end-to-end in your browser via Colab:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TheDevilWillBeBee/Cells2Pixels/blob/main/notebooks/simple_texture.ipynb)
 
 ## Web Demo
 
